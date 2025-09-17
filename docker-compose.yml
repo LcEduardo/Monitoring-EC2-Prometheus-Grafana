@@ -1,0 +1,70 @@
+version: '3.8'
+
+
+services:
+
+# Imagem Node-Exporter
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    expose:
+      - 9100
+    networks:
+      - monitoring
+
+  # Imagem Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+
+# Imagem Grafana
+  grafana:
+      image: grafana/grafana:latest
+      container_name: grafana
+      restart: unless-stopped
+      volumes:
+        - grafana_data:/var/lib/grafana
+      ports:
+        - "3000:3000"
+      environment:
+        - GF_DATABASE_TYPE=postgres
+        - GF_DATABASE_HOST=caminho-do-banco-de-dados-rds-aws
+        - GF_DATABASE_NAME=grafana
+        - GF_DATABASE_USER=grafana
+        - GF_DATABASE_PASSWORD=senha
+        
+      networks:
+        - monitoring
+
+# Seção de volumes para persistir os dados
+volumes:
+  prometheus_data:
+  grafana_data: 
+
+networks:
+  monitoring:
+    external: true
